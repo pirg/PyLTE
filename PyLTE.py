@@ -28,8 +28,20 @@ class LTE(object):
     data['EL_K'] = data['El_cm']*cm2K
     data['EU_K'] = (((data['Freq-MHz']*u.MHz)/astropy.constants.c+data['El_cm']/u.cm).to('1/cm')*cm2K).value
     data['Aij'] = Dipole_factor*pow(10,data['log10I'])*data['Freq-MHz']**2*Q300/data['g_u']*2.7964e-16/(np.exp(-data['EL_K']/300.)*(1-np.exp(-astropy.constants.h*data['Freq-MHz']*u.MHz/(astropy.constants.k_B*300.*u.K))))
+    print data['Freq-MHz']
     print np.log10(data['Aij'])
     return data
+
+    # def from_SLAIM(self,SLAIM_file,Dipole_factor):
+    # data = ascii.read(SLAIM_file)
+    # Q300 = self.compute_Q(300)
+    # cm2K = ((astropy.constants.h*astropy.constants.c/u.cm)/(astropy.constants.k_B*u.K)).decompose()
+    # data['EL_K'] = data['El_cm']*cm2K
+    # data['EU_K'] = (((data['Freq-MHz']*u.MHz)/astropy.constants.c+data['El_cm']/u.cm).to('1/cm')*cm2K).value
+    # data['Aij'] = Dipole_factor*pow(10,data['log10I'])*data['Freq-MHz']**2*Q300/data['g_u']*2.7964e-16/(np.exp(-data['EL_K']/300.)*(1-np.exp(-astropy.constants.h*data['Freq-MHz']*u.MHz/(astropy.constants.k_B*300.*u.K))))
+    # print data['Freq-MHz']
+    # print np.log10(data['Aij'])
+    # return data
 
   def trimmed_query(self, *args,**kwargs):
           S = Splatalogue(energy_max=500,
@@ -69,6 +81,7 @@ class LTE(object):
     row = self.partfunc[self.partfunc['molecule'] == species]
     row['5.0 K'].fill_value = row['9.375 K']+3/2.*np.log10(5.0/9.375)
     row['2.725 K'].fill_value = row['9.375 K']+3/2.*np.log10(2.725/9.375)
+    # row['0 K'].fill_value = -np.inf
     self.qval = list(row.filled()[0].data)[3:]
     self.qval = np.array(map(float,self.qval))
     print self.qval
@@ -79,8 +92,8 @@ class LTE(object):
       temps = np.array([300, 225, 150, 75, 37.5, 18.75,9.375,5.0,2.725])
       idx = temps.argsort()
       temps = temps[idx]
-      qval = qval[idx]
-      return pow(10,np.interp(T, temps, qval))*self.Qfactor
+      qval = pow(10,qval[idx])
+      return np.interp(T, temps, qval)*self.Qfactor
   
   def phi(self, Dv, freq, npoint):
     import scipy.stats.distributions as stats
@@ -120,7 +133,8 @@ class LTE(object):
       tau = astropy.constants.c**2 / (8 * np.pi * (freq)**2*u.MHz*u.MHz) * Aij*u.Hz \
           * Ntot/u.cm**2 * gu \
           * np.exp(-Eu / Tex) \
-          / Q * (np.exp(astropy.constants.h * (freq)*u.MHz / (Tex*u.K * astropy.constants.k_B))-1) * phi_vec[1]
+          / Q * (np.exp(astropy.constants.h * (freq)*u.MHz / (Tex*u.K * astropy.constants.k_B))-1)
+      tau = tau * phi_vec[1]
       tau = tau.decompose()
       tb = (self.J(Tex, freq*u.MHz) - self.J(Tbg, freq*u.MHz)) * (1 - np.exp(-tau))
       tb = tb.decompose()
@@ -132,6 +146,8 @@ class LTE(object):
   def intens_tau(self, Ntot, Tex, Dv):
     model = np.zeros((len(self.idx_obs),2))
     for i,idx in enumerate(self.idx_obs):
+      # idx = idx[0].split(',')
+      # idx = map(int,idx)
       for row in self.linelist[idx]:
         model[i,:] +=  self.tau(np.array(row['Freq-MHz']), np.array(row['Aij']), np.array(row['g_u']), np.array(row['EU_K']), self.compute_Q(Tex),  Ntot, Tex, Dv )[0:4:3]
     return model
@@ -145,25 +161,79 @@ class LTE(object):
   def Vlsr_vec(self, Ntot, Tex, Dv):
     return [self.tau(np.array(row['Freq-MHz']), np.array(row['Aij']), np.array(row['g_u']), np.array(row['EU_K']), self.compute_Q(Tex), Ntot, Tex, Dv )[4].value for row in self.linelist]
 
-# idx_obs = [[0],[1],[]]
-# L = LTE('C3S', 'CCCS', idx_obs, points_per_line=20,CDMS_file='data/C3S_db.dat',Qfactor=1.)
+# idx_obs = [[0]]
+# nmod_np = 10
+# nmod_ext = 20
+# nbpoints = range(2,nmod_np)
+# ext_vec = range(1,nmod_ext)
 #
+# Ntot =  6e16
+# Tex =  5.
+# dv =  0.5
+# taumax = np.zeros((nmod_np-2,nmod_ext-1))
+# W = np.zeros((nmod_np-2,nmod_ext-1))
 #
-# row = L.linelist[0]
-# Ntot =  1e14
-# Tex =  18.75
-# dv =  2
-#
-# out = L.tau(np.array(row['Freq-MHz']), np.array(row['Aij']), np.array(row['g_u']), np.array(row['EU_K']), L.compute_Q(L.part_name, Tex),  Ntot, Tex, dv )
-# print np.log10(L.compute_Q('CO',Tex))
-# print "tau max", out[0]
-#
-# tau_intens =  L.intens_tau(Ntot, Tex, dv)
 # import pylab as pl
 # pl.ion()
 # pl.figure(1)
 # pl.clf()
+#
+# L = LTE('C3S', 'CCCS', idx_obs, points_per_line=100000,extent=1000,CDMS_file='data/C3S_db.dat',Qfactor=1.)
+# tau_intens =  L.intens_tau(Ntot, Tex, dv)
+# taumax_lim = tau_intens[0][0]
+# W_lim = tau_intens[0][1]
+#
+# row = L.linelist[0]
+# out = L.tau(np.array(row['Freq-MHz']), np.array(row['Aij']), np.array(row['g_u']), np.array(row['EU_K']), L.compute_Q(Tex),  Ntot, Tex, dv )
+# print np.log10(L.compute_Q(Tex))
+# print "tau max", out[0]
+# pl.subplot(211)
 # pl.plot(out[1].value,out[2].value)
+# pl.subplot(212)
+# pl.plot(out[1].value,out[6].value)
+#
+# L = LTE('C3S', 'CCCS', idx_obs, points_per_line=21,extent=6,CDMS_file='data/C3S_db.dat',Qfactor=1.)
+# tau_intens =  L.intens_tau(Ntot, Tex, dv)
+# taumax = tau_intens[0][0]
+# W = tau_intens[0][1]
+#
+# row = L.linelist[0]
+# out = L.tau(np.array(row['Freq-MHz']), np.array(row['Aij']), np.array(row['g_u']), np.array(row['EU_K']), L.compute_Q(Tex),  Ntot, Tex, dv )
+# print np.log10(L.compute_Q(Tex))
+# print "tau max", out[0]
+# pl.subplot(211)
+# pl.plot(out[1].value,out[2].value)
+# pl.xlim(out[1].value[0],out[1].value[-1])
+# pl.subplot(212)
+# pl.plot(out[1].value,out[6].value)
+# pl.xlim(out[1].value[0],out[1].value[-1])
+#
+# print "taumax:", taumax_lim
+# print "W error:", (W-W_lim)/W_lim*100
+# print "taumax error:", (taumax-taumax_lim)/taumax_lim*100
+# #
+
 # print out[3]
 # print tau_intens[0]
 # print tau_intens[1]
+
+
+# for i,nbp in enumerate(nbpoints):
+#   for j,ext in enumerate(ext_vec):
+#     print nbp
+#     L = LTE('C3S', 'CCCS', idx_obs, points_per_line=nbp,extent=ext,CDMS_file='data/C3S_db.dat',Qfactor=1.)
+#     tau_intens =  L.intens_tau(Ntot, Tex, dv)
+#     print tau_intens
+#     taumax[i-2,j-1] = tau_intens[0][1]
+#     W[i-2,j-1] = tau_intens[0][0]
+#
+# import pylab as pl
+# pl.figure(1)
+# pl.clf()
+# pl.imshow(taumax/taumax_lim,aspect=1,vmin=0.9,vmax=1.1,interpolation='nearest')
+# pl.colorbar()
+#
+# pl.figure(1)
+# pl.clf()
+# pl.imshow(W/W_lim,aspect=1,interpolation='nearest')
+# pl.colorbar()
