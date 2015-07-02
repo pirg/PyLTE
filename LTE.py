@@ -68,9 +68,9 @@ class LTE(object):
     colwidths = [6,13,7]+9*[7]
     self.partfunc = ascii.read("partfunc.txt", guess=False, format='fixed_width_no_header', col_starts=tuple([0])+tuple(np.cumsum(colwidths[0:-1])), col_ends=tuple(np.cumsum(colwidths)), names=('tag', 'molecule', 'nline',  '300K', '225K', '150K', '75K', '37.5K', '18.75K', '9.375 K', '5.0 K', '2.725 K'))
     row = self.partfunc[self.partfunc['molecule'] == species]
-    row['5.0 K'].fill_value = row['9.375 K']+3/2.*np.log10(5.0/9.375)
-    row['2.725 K'].fill_value = row['9.375 K']+3/2.*np.log10(2.725/9.375)
-    # row['0 K'].fill_value = -np.inf
+    # row['5.0 K'].fill_value = row['9.375 K']+3/2.*np.log10(5.0/9.375)
+    # row['2.725 K'].fill_value = row['9.375 K']+3/2.*np.log10(2.725/9.375)
+    row['0 K'] = 0.*row['9.375 K']
     self.qval = list(row.filled()[0].data)[3:]
     self.qval = np.array(map(float,self.qval))
     print self.qval
@@ -78,11 +78,12 @@ class LTE(object):
     
   def compute_Q(self, T):
       qval = self.qval
-      temps = np.array([300, 225, 150, 75, 37.5, 18.75,9.375,5.0,2.725])
+      temps = np.array([300, 225, 150, 75, 37.5, 18.75,9.375,5.0,2.725,0])
       idx = temps.argsort()
       temps = temps[idx]
-      qval = pow(10,qval[idx])
-      return np.interp(T, temps, qval)*self.Qfactor
+      qval = np.interp(T, temps, qval)
+      qval = pow(10,qval[idx])*self.Qfactor
+      return qval
   
   def phi(self, Dv, freq, npoint):
     import scipy.stats.distributions as stats
