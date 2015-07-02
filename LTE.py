@@ -32,17 +32,6 @@ class LTE(object):
     print np.log10(data['Aij'])
     return data
 
-    # def from_SLAIM(self,SLAIM_file,Dipole_factor):
-    # data = ascii.read(SLAIM_file)
-    # Q300 = self.compute_Q(300)
-    # cm2K = ((astropy.constants.h*astropy.constants.c/u.cm)/(astropy.constants.k_B*u.K)).decompose()
-    # data['EL_K'] = data['El_cm']*cm2K
-    # data['EU_K'] = (((data['Freq-MHz']*u.MHz)/astropy.constants.c+data['El_cm']/u.cm).to('1/cm')*cm2K).value
-    # data['Aij'] = Dipole_factor*pow(10,data['log10I'])*data['Freq-MHz']**2*Q300/data['g_u']*2.7964e-16/(np.exp(-data['EL_K']/300.)*(1-np.exp(-astropy.constants.h*data['Freq-MHz']*u.MHz/(astropy.constants.k_B*300.*u.K))))
-    # print data['Freq-MHz']
-    # print np.log10(data['Aij'])
-    # return data
-
   def trimmed_query(self, *args,**kwargs):
           S = Splatalogue(energy_max=500,
              energy_type='eu_k',energy_levels=['el4'],
@@ -161,79 +150,4 @@ class LTE(object):
   def Vlsr_vec(self, Ntot, Tex, Dv):
     return [self.tau(np.array(row['Freq-MHz']), np.array(row['Aij']), np.array(row['g_u']), np.array(row['EU_K']), self.compute_Q(Tex), Ntot, Tex, Dv )[4].value for row in self.linelist]
 
-# idx_obs = [[0]]
-# nmod_np = 10
-# nmod_ext = 20
-# nbpoints = range(2,nmod_np)
-# ext_vec = range(1,nmod_ext)
-#
-# Ntot =  6e16
-# Tex =  5.
-# dv =  0.5
-# taumax = np.zeros((nmod_np-2,nmod_ext-1))
-# W = np.zeros((nmod_np-2,nmod_ext-1))
-#
-# import pylab as pl
-# pl.ion()
-# pl.figure(1)
-# pl.clf()
-#
-# L = LTE('C3S', 'CCCS', idx_obs, points_per_line=100000,extent=1000,CDMS_file='data/C3S_db.dat',Qfactor=1.)
-# tau_intens =  L.intens_tau(Ntot, Tex, dv)
-# taumax_lim = tau_intens[0][0]
-# W_lim = tau_intens[0][1]
-#
-# row = L.linelist[0]
-# out = L.tau(np.array(row['Freq-MHz']), np.array(row['Aij']), np.array(row['g_u']), np.array(row['EU_K']), L.compute_Q(Tex),  Ntot, Tex, dv )
-# print np.log10(L.compute_Q(Tex))
-# print "tau max", out[0]
-# pl.subplot(211)
-# pl.plot(out[1].value,out[2].value)
-# pl.subplot(212)
-# pl.plot(out[1].value,out[6].value)
-#
-# L = LTE('C3S', 'CCCS', idx_obs, points_per_line=21,extent=6,CDMS_file='data/C3S_db.dat',Qfactor=1.)
-# tau_intens =  L.intens_tau(Ntot, Tex, dv)
-# taumax = tau_intens[0][0]
-# W = tau_intens[0][1]
-#
-# row = L.linelist[0]
-# out = L.tau(np.array(row['Freq-MHz']), np.array(row['Aij']), np.array(row['g_u']), np.array(row['EU_K']), L.compute_Q(Tex),  Ntot, Tex, dv )
-# print np.log10(L.compute_Q(Tex))
-# print "tau max", out[0]
-# pl.subplot(211)
-# pl.plot(out[1].value,out[2].value)
-# pl.xlim(out[1].value[0],out[1].value[-1])
-# pl.subplot(212)
-# pl.plot(out[1].value,out[6].value)
-# pl.xlim(out[1].value[0],out[1].value[-1])
-#
-# print "taumax:", taumax_lim
-# print "W error:", (W-W_lim)/W_lim*100
-# print "taumax error:", (taumax-taumax_lim)/taumax_lim*100
-# #
 
-# print out[3]
-# print tau_intens[0]
-# print tau_intens[1]
-
-
-# for i,nbp in enumerate(nbpoints):
-#   for j,ext in enumerate(ext_vec):
-#     print nbp
-#     L = LTE('C3S', 'CCCS', idx_obs, points_per_line=nbp,extent=ext,CDMS_file='data/C3S_db.dat',Qfactor=1.)
-#     tau_intens =  L.intens_tau(Ntot, Tex, dv)
-#     print tau_intens
-#     taumax[i-2,j-1] = tau_intens[0][1]
-#     W[i-2,j-1] = tau_intens[0][0]
-#
-# import pylab as pl
-# pl.figure(1)
-# pl.clf()
-# pl.imshow(taumax/taumax_lim,aspect=1,vmin=0.9,vmax=1.1,interpolation='nearest')
-# pl.colorbar()
-#
-# pl.figure(1)
-# pl.clf()
-# pl.imshow(W/W_lim,aspect=1,interpolation='nearest')
-# pl.colorbar()
